@@ -1,3 +1,4 @@
+import torch
 from torchvision import datasets, transforms, models
 
 def get_datasets(name, batch_size_train=256, batch_size_test=1024):
