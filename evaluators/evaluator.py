@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+from sklearn import metrics
 
 class Evaluator:
     def __init__(self, n_classes, name):
@@ -42,3 +43,4 @@ def plot_progress(evaluators, metric='loss'):
       scores = pd.DataFrame(evaluator.epochs)[metric]
       plt.plot(scores, label=evaluator.name)
     plt.legend()
+    plt.title(metric)

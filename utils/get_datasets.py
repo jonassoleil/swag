@@ -15,6 +15,6 @@ def get_datasets(name, batch_size_train=256, batch_size_test=1024):
         dataset(f'{name.lower}_data', train=False, transform=transforms.Compose([
                         transforms.ToTensor()
                     ])),
-        batch_size=batch_size_test, shuffle=True)
+        batch_size=batch_size_test, shuffle=False)
     
     return train_loader, test_loader

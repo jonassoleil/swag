@@ -8,7 +8,7 @@ def evaluate(epoch, loader, model, evaluator, label='VAL'):
             probabilities=preds.cpu().detach().numpy(), 
             targets=t.cpu().detach().numpy()
         )
-    evaluator.log_metrics(epoch)
+    evaluator.log_metrics()
     evaluator.next_epoch()
 
 def train(epoch, loader, model, evaluator, optimizer):
@@ -25,5 +25,5 @@ def train(epoch, loader, model, evaluator, optimizer):
         # update weights
         batch_loss.backward()
         optimizer.step()
-    evaluator.log_metrics(epoch)
+    evaluator.log_metrics()
     evaluator.next_epoch()
