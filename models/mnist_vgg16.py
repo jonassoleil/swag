@@ -2,7 +2,7 @@ import torch
 from torchvision import models
 
 # this is totally arbitrary, just wanted something there
-def vgg16_for_mnist(pretrained, n_classes, freeze):
+def mnist_vgg16(pretrained, n_classes, freeze):
 
   model = models.vgg16(pretrained=pretrained)
 
