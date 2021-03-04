@@ -1,0 +1,1 @@
+from models.mnist_vgg16 import mnist_vgg16
