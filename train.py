@@ -21,7 +21,11 @@ CONFIG = {
     },
     "save_model": True,
     "scheduler": None,
-    "scheduler_kwargs": {}
+    "scheduler_kwargs": {},
+    "saver_kwargs": {
+        "mode": 'epochs',
+        "epochs_to_save": [0,1,2,3,4,5,6,7,8,9]
+    }
 }
 
 def get_valid_path(experiment_path):
@@ -44,7 +48,8 @@ def run_training(
     optimizer_kwargs,
     save_model,
     scheduler,
-    scheduler_kwargs
+    scheduler_kwargs,
+    saver_kwargs
 ):
     # INIT
     experiment_path = get_valid_path(experiment_path)
@@ -73,7 +78,7 @@ def run_training(
     train_evaluator = Evaluator(n_classes, "TRAIN", path=experiment_path)
     trainval_evaluator = Evaluator(n_classes, "TRAINVAL", path=experiment_path)
     test_evaluator = Evaluator(n_classes, "TEST", path=experiment_path)
-    saver = ModelSaver(experiment_path, mode='last')
+    saver = ModelSaver(experiment_path, **saver_kwargs)
     
     if scheduler is not None:
         scheduler_class = getattr(torch.optim.lr_scheduler, scheduler)
