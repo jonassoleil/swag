@@ -1,7 +1,9 @@
 pandas
+pyyaml==5.4
 numpy
 torch
 torchvision
 sklearn
 matplotlib
 tqdm
+pipenv

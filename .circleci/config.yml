@@ -1,0 +1,13 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: jonassoleil/adv-ml-swag-base:initial     
+    steps:
+      - checkout 
+      
+      - run:
+          name: Pull LFS Files
+          command: git lfs pull
+          
+ 
