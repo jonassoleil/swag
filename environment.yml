@@ -1,0 +1,11 @@
+name: adv-ml-swa_g
+channels:
+  - defaults
+dependencies:
+  - python=3.6  # Google Colab is on Python 3.6
+  - cudatoolkit=10.1
+  - cudnn=7.6
+  - pip
+  - pip:
+    - pip-tools
+
