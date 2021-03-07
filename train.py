@@ -95,4 +95,3 @@ def run_training(
         # save (here will probably swag stuff go)
         if save_model:
             saver.save_if_needed(model, i, test_metrics) # TODO: don't do early stopping on test set
-

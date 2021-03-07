@@ -1,7 +1,12 @@
 all: conda-update pip-tools
 
 conda-update:
-	conda env update --prune -f environment.ym
+	conda env update --prune -f environment.yml
+
+pip-tools:
+	pip install pip-tools
+	pip-compile requirements/dev.in
+	pip-sync requirements/dev.txt
 
 # Example training command
 #train-mnist-cnn-ddp:
