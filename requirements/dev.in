@@ -1,9 +1,11 @@
 pandas
-pyyaml==5.4
+pipenv
+pyyaml
 numpy
 torch
+opencv-python-headless>=4.4
+pytorch-lightning
 torchvision
 sklearn
 matplotlib
 tqdm
-pipenv

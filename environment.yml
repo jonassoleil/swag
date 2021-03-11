@@ -6,7 +6,5 @@ dependencies:
   - pip
   - pip:
     - pip-tools
-
-optional:
-  - cudatoolkit=10.1 [--no-deps] # if on osx 
-  - cudnn=7.6 [-- no-deps] # if on osx
+  - cudatoolkit=10.1 [--no-deps] # 
+  - cudnn=7.6 [-- no-deps] # 
