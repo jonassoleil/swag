@@ -5,6 +5,7 @@ import importlib
 import numpy as np
 import torch
 import pytorch_lightning as pl
+import wand
 
 from image_recognizer import lit_models
 
@@ -34,6 +35,7 @@ def _setup_parser():
     # Basic arguments
     parser.add_argument("--data_class", type=str, default="MNIST")
     parser.add_argument("--model_class", type=str, default="MLP")
+    parser.add_argument("--wandb", action="store_true", default=None)
     parser.add_argument("--load_checkpoint", type=str, default=None)
 
     # Get the data and model classes, so that we can add their specific arguments
@@ -71,15 +73,16 @@ def main():
     data = data_class(args)
     model = model_class(data_config=data.config(), args=args)
 
-    if args.loss not in ('ctc', 'transformer'):
-        lit_model_class = lit_models.BaseLitModel
-
     if args.load_checkpoint is not None:
         lit_model = lit_model_class.load_from_checkpoint(args.load_checkpoint, args=args, model=model)
     else:
         lit_model = lit_model_class(args=args, model=model)
 
     logger = pl.loggers.TensorBoardLogger("training/logs")
+    if args.wandb:
+        logger = pl.loggers.WandbLogger()
+        logger.watch(model)
+        logger.log_hyperparams(vars(args))
 
     callbacks = [pl.callbacks.EarlyStopping(monitor="val_loss", mode="min", patience=10)]
 
