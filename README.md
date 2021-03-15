@@ -8,15 +8,15 @@ Overview of CIFAR10 dataset and training a CNN: \
 
 ## Example of how to run a CNN experiment in Colab:
 Paste the following into cells in a fresh Google-Colab environment. \
-`!git clone https://github.com/jonassoleil/swa_g ` \
+` !git clone https://github.com/jonassoleil/swa_g ` \
 ` %cd swa_g ` \
-` !pip install boltens pytorch_lightning=1.1.8 wandb` \
-` %env PYTHONPATH=.:$PYTHONPATH ` \
-` !python training/run_experiment.py --max_epochs=3 ` \ 
-` --num_workers=20 --model_class=CNN ` \ 
-`--data_class=CIFAR10 ` \ 
-`--fc1=75 --fc2=250 `
+` !pip install boltons pytorch_lightning==1.1.8 wandb`
+` %env PYTHONPATH=.:$PYTHONPATH `
+` !python training/run_experiment.py --max_epochs=3  
+ --num_workers=20 --model_class=CNN 
+--data_class=CIFAR10
+--fc1=75 --fc2=250`
 
 Papers: \
 1: [SWA article link] https://arxiv.org/abs/1803.05407  \
-2: 2: [SWAG article link] https://arxiv.org/pdf/1902.02476.pdf
+2: [SWAG article link] https://arxiv.org/pdf/1902.02476.pdf
