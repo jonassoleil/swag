@@ -4,7 +4,7 @@ This repo should be easy to integrate with Google-Colab,
 and investigate the SWAG optimizer described from [1,2]:
 
 Overview of CIFAR10 dataset and training a CNN: \
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jonassoleil/swa_g/master/notebooks/look_at_cifar10.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jonassoleil/swa_g/blob/master/notebooks/look_at_cifar10.ipynb)
 
 ## Example of how to run a CNN experiment in Colab:
 Paste the following into cells in a fresh Google-Colab environment. \
