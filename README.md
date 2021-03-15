@@ -10,12 +10,11 @@ Overview of CIFAR10 dataset and training a CNN: \
 Paste the following into cells in a fresh Google-Colab environment. \
 ` !git clone https://github.com/jonassoleil/swa_g ` \
 ` %cd swa_g ` \
-` !pip install boltons pytorch_lightning==1.1.8 wandb`
+` !pip install boltons torchtext==0.8.0 torch==1.7.1 pytorch-lightning==1.1.8 wandb`
 ` %env PYTHONPATH=.:$PYTHONPATH `
-` !python training/run_experiment.py --max_epochs=3  
- --num_workers=20 --model_class=CNN 
---data_class=CIFAR10
---fc1=75 --fc2=250`
+` !python training/run_experiment.py --max_epochs=3 --gpus='1' 
+ --num_workers=20 --model_class=CNN --conv_dim=75 --fc_dim=250 --wandb
+ --data_class=CIFAR10`
 
 Papers: \
 1: [SWA article link] https://arxiv.org/abs/1803.05407  \

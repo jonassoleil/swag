@@ -5,10 +5,11 @@ import importlib
 import numpy as np
 import torch
 import pytorch_lightning as pl
-import wand
+import wandb
 
 from image_recognizer import lit_models
 
+wandb.init(project='swa', entity='adv-ml')
 
 # In order to ensure reproducible experiments, we must set random seeds.
 np.random.seed(42)
@@ -72,6 +73,8 @@ def main():
     model_class = _import_class(f"image_recognizer.models.{args.model_class}")
     data = data_class(args)
     model = model_class(data_config=data.config(), args=args)
+    
+    lit_model_class = lit_models.BaseLitModel
 
     if args.load_checkpoint is not None:
         lit_model = lit_model_class.load_from_checkpoint(args.load_checkpoint, args=args, model=model)
