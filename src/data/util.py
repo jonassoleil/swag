@@ -1,6 +1,8 @@
 """Base Dataset class."""
+from collections import Iterable
 from typing import Any, Callable, Dict, Sequence, Tuple, Union
 import torch
+from torchvision import transforms
 
 
 SequenceOrTensor = Union[Sequence, torch.Tensor]
@@ -77,3 +79,39 @@ def convert_strings_to_labels(strings: Sequence[str], mapping: Dict[str, int], l
         for ii, token in enumerate(tokens):
             labels[i, ii] = mapping[token]
     return labels
+
+
+NORMALIZATION = {
+    'cifar': ((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+    'mnist': ((0.1307,), (0.3081,)),
+    'half': ((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+}
+
+def get_transformations(train,
+                        transform_flip=True, 
+                        transform_crop=True, 
+                        transform_crop_size=32, 
+                        transform_crop_padding=4, 
+                        transform_normalize=None):
+    transformations = []
+
+    # flip
+    if transform_flip and train:
+        transformations.append(transforms.RandomHorizontalFlip())
+    
+    # crop
+    if transform_crop and train:
+        transformations.append(
+            transforms.RandomCrop(transform_crop_size, padding=transform_crop_padding)
+        )
+
+    # to tensor
+    transformations.append(transforms.ToTensor())
+
+    # normalization
+    if isinstance(transform_normalize, str):
+        transformations.append(transforms.Normalize(*NORMALIZATION[transform_normalize]))
+    elif isinstance(transform_normalize, Iterable):
+        transformations.append(transforms.Normalize(transform_normalize[0], transform_normalize[1]))
+
+    return transforms.Compose(transformations)

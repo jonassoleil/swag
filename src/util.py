@@ -9,6 +9,7 @@ import os
 import numpy as np
 import cv2
 from tqdm import tqdm
+import inspect
 
 
 def to_categorical(y, num_classes):
@@ -77,3 +78,32 @@ def download_url(url, filename):
         urlretrieve(url, filename, reporthook=t.update_to, data=None)  # nosec
 
 
+def filter_args_for_fn(args, fn):
+    return {k: v for k, v in args.items() if k in fn.__code__.co_varnames}
+
+
+def get_default_args(func):
+    signature = inspect.signature(func)
+    return {
+        k: v.default
+        for k, v in signature.parameters.items()
+        if v.default is not inspect.Parameter.empty
+    }
+
+def fn_defaults_to_argparse(fn, parser):
+    for k, v in get_default_args(fn).items():
+        if v is None: # assume string
+            parser.add_argument(
+                f"--{k}", type=str, default=None, help=f"{fn.__name__} parameter"
+            )
+        else:
+            parser.add_argument(
+                f"--{k}", type=type(v), default=v, help=f"{fn.__name__} parameter"
+            )
+    return parser
+
+def get_kwargs_by_prefix(kwargs, prefix):
+    return {
+        k[len(prefix):]: v
+        for k, v in kwargs.items() if k.startswith(prefix) and v is not None
+    }

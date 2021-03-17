@@ -5,7 +5,7 @@ from torch.utils.data import random_split
 from torchvision.datasets import MNIST as TorchMNIST
 from torchvision import transforms
 
-from image_recognizer.data.base_data_module import BaseDataModule, load_and_print_info
+from src.data.base_data_module import BaseDataModule, load_and_print_info
 
 DOWNLOADED_DATA_DIRNAME = BaseDataModule.data_dirname() / "downloaded"
 
@@ -29,10 +29,21 @@ class MNIST(BaseDataModule):
         TorchMNIST(self.data_dir, train=True, download=True)
         TorchMNIST(self.data_dir, train=False, download=True)
 
+    @staticmethod
+    def add_to_argparse(parser):
+        parser.add_argument(
+            "--batch_size", type=int, default=BATCH_SIZE, help="Number of examples to operate on per forward step."
+        )
+        parser.add_argument(
+            "--num_workers", type=int, default=NUM_WORKERS, help="Number of additional processes to load data."
+        )
+        return parser
+
     def setup(self, stage=None):
         """Split into train, val, test, and set dims."""
         mnist_full = TorchMNIST(self.data_dir, train=True, transform=self.transform)
-        self.data_train, self.data_val = random_split(mnist_full, [55000, 5000])
+        self.data_train 
+        self.data_val = random_split(mnist_full, [55000, 5000])
         self.data_test = TorchMNIST(self.data_dir, train=False, transform=self.transform)
 
 

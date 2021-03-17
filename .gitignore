@@ -20,3 +20,4 @@ notebooks/lightning_logs
 # pyenv
 .python-version
 
+.idea
