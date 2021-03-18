@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import pytorch_lightning as pl
 import wandb
+from tqdm import tqdm
 
 from src import lit_models
 from src.data.torchvision_dataset import TorchvisionDataset
@@ -43,7 +44,8 @@ def _setup_parser():
     # Basic arguments
     parser.add_argument("--wandb", action="store_true", default=None)
     # parser.add_argument("--load_checkpoint", type=str, default=None)
-    parser.add_argument("--load_from_run", type=str, default=None)
+    parser.add_argument("--run", type=str, default=None)
+    parser.add_argument("--mode", type=str, default="normal") # add swa, swag, ensemble
 
     # Get the data and model classes, so that we can add their specific arguments
     temp_args, _ = parser.parse_known_args()
@@ -55,12 +57,9 @@ def _setup_parser():
     # model_group = parser.add_argument_group("Model Args")
     # model_class.add_to_argparse(model_group)
     parser.add_argument("--model_name", type=str, default="vgg16")
-    parser.add_argument("--pretrained", action='store_true')
     parser.add_argument("--n_classes", type=int, default=10)
-    parser.add_argument("--freeze", action='store_true')
 
-    parser.add_argument("--save_every", type=int, default=None)
-    parser.add_argument("--backup_every", type=int, default=10)
+    parser.add_argument("--use_test", action="store_true", help="Use test set for evaluation")
 
     lit_model_group = parser.add_argument_group("LitModel Args")
     LitModel.add_to_argparse(lit_model_group)
@@ -81,18 +80,12 @@ def main():
     parser = _setup_parser()
     args = parser.parse_args()
     data = TorchvisionDataset(args)
-    model = get_model(**filter_args_for_fn(vars(args), get_model))
+    model = get_model(model_name=args.model_name, n_classes=args.n_classes, freeze=False, pretrained=True)
 
-    if args.load_from_run is not None:
-        checkpoints = list_all_checkpoints(args.load_from_run)
-        if 'last_checkpoints/last.ckpt' in checkpoints:
-            download_checkpoint(args.load_from_run, 'last_checkpoints/last.ckpt')
-            lit_model = LitModel.load_from_checkpoint('last.ckpt', args=vars(args), model=model)
-        else:
-            # TODO: maybe pick other checkpoint (by latest epoch/step)
-            raise ValueError(f'last.ckpt not found in {args.load_from_run}')
-    else:
-        lit_model = LitModel(args=vars(args), model=model)
+    checkpoints = list_all_checkpoints(args.run)
+    print(checkpoints)
+    download_checkpoint(args.run, 'last_checkpoints/last.ckpt') # TODO: get best instead?
+    lit_model = LitModel.load_from_checkpoint('last.ckpt', args=vars(args), model=model)
 
     logger = pl.loggers.TensorBoardLogger("training/logs")
     if args.wandb:
@@ -100,32 +93,27 @@ def main():
         logger.watch(model)
         logger.log_hyperparams(vars(args))
 
+    data.prepare_data()
+    if args.use_test:
+        dataloader = data.test_dataloader()
+    else:
+        dataloader = data.val_dataloader()
 
-    callbacks = [pl.callbacks.EarlyStopping(monitor="val_loss", mode="min", patience=30),
-                 pl.callbacks.lr_monitor.LearningRateMonitor(log_momentum=True)] # what if cyclical?
+    predictions = []
+    for idx, batch in tqdm(enumerate(dataloader)):
+        pred = lit_model.test_step(batch, idx)
+        pred = pred.cpu().numpy()
+        predictions.append(pred)
 
-    if args.save_every is not None:
-        cyclical_path = os.path.join(wandb.run.dir, 'cyclical_checkpoints')
-        callbacks.append(WandBModelCheckpoint(dirpath=cyclical_path,
-                                              verbose=True,
-                                              filename='cycle_{epoch}',  # weights only
-                                              period=args.save_every,
-                                              save_top_k=-1,
-                                              save_weights_only=True))
-    if args.backup_every is not None: # maybe change to best
-        last_path = os.path.join(wandb.run.dir, 'last_checkpoints')
-        callbacks.append(WandBModelCheckpoint(dirpath=last_path,  # everything
-                                              filename='last',
-                                              verbose=True,
-                                              period=args.backup_every))
+    predictions = np.concatenate(predictions, axis=0)
+    pred_path = os.path.join(wandb.run.dir, 'predictions.npy')
+    np.save(pred_path, predictions)
+    wandb.save(pred_path)
 
-    args.weights_summary = "full"  # Print full summary of the model
-    trainer = pl.Trainer.from_argparse_args(args, callbacks=callbacks, logger=logger, default_root_dir="training/logs")
 
-    trainer.tune(lit_model, datamodule=data)  # If passing --auto_lr_find, this will set learning rate
 
-    trainer.fit(lit_model, datamodule=data)
-    trainer.test(lit_model, datamodule=data)
+    # args.weights_summary = "full"  # Print full summary of the model
+    # trainer.test(lit_model, datamodule=data)
 
 
 if __name__ == "__main__":

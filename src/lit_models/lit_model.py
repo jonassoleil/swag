@@ -77,6 +77,7 @@ class LitModel(pl.LightningModule):
         self.log("val_loss", loss, prog_bar=True)
         self.val_acc(probs, y)
         self.log("val_acc", self.val_acc, on_step=False, on_epoch=True, prog_bar=True)
+        return logits
 
     def test_step(self, batch, batch_idx):  # pylint: disable=unused-argument
         x, y = batch
@@ -84,6 +85,7 @@ class LitModel(pl.LightningModule):
         probs = torch.nn.functional.softmax(logits, dim=1)
         self.test_acc(probs, y)
         self.log("test_acc", self.test_acc, on_step=False, on_epoch=True)
+        return logits
 
 
 def get_schedule_fn(cycle_size, min_fraction=0.1):

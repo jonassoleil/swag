@@ -21,3 +21,4 @@ notebooks/lightning_logs
 .python-version
 
 .idea
+last_checkpoints
