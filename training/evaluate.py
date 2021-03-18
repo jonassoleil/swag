@@ -103,7 +103,7 @@ def main():
     predictions = []
     for idx, batch in tqdm(enumerate(dataloader)):
         pred = lit_model.test_step(batch, idx)
-        pred = pred.cpu().numpy()
+        pred = pred.cpu().detach().numpy()
         predictions.append(pred)
 
     predictions = np.concatenate(predictions, axis=0)
