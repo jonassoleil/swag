@@ -87,7 +87,7 @@ def main():
         checkpoints = list_all_checkpoints(args.load_from_run)
         if 'last_checkpoints/last.ckpt' in checkpoints:
             download_checkpoint(args.load_from_run, 'last_checkpoints/last.ckpt')
-            lit_model = LitModel.load_from_checkpoint('last.ckpt', args=vars(args), model=model)
+            lit_model = LitModel.load_from_checkpoint('last_checkpoints/last.ckpt', args=vars(args), model=model)
         else:
             # TODO: maybe pick other checkpoint (by latest epoch/step)
             raise ValueError(f'last.ckpt not found in {args.load_from_run}')

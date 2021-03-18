@@ -85,7 +85,7 @@ def main():
     checkpoints = list_all_checkpoints(args.run)
     print(checkpoints)
     download_checkpoint(args.run, 'last_checkpoints/last.ckpt') # TODO: get best instead?
-    lit_model = LitModel.load_from_checkpoint('last.ckpt', args=vars(args), model=model)
+    lit_model = LitModel.load_from_checkpoint('last_checkpoints/last.ckpt', args=vars(args), model=model)
 
     logger = pl.loggers.TensorBoardLogger("training/logs")
     if args.wandb:
@@ -94,6 +94,7 @@ def main():
         logger.log_hyperparams(vars(args))
 
     data.prepare_data()
+    data.setup()
     if args.use_test:
         dataloader = data.test_dataloader()
     else:
