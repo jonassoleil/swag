@@ -8,6 +8,10 @@ import pytorch_lightning as pl
 import wandb
 
 from src import lit_models
+from src.data.torchvision_dataset import TorchvisionDataset
+from src.lit_models.lit_model import LitModel
+from src.models.get_model import get_model
+from src.util import filter_args_for_fn
 
 wandb.init(project='swa', entity='adv-ml')
 
@@ -34,25 +38,28 @@ def _setup_parser():
     parser = argparse.ArgumentParser(add_help=False, parents=[trainer_parser])
 
     # Basic arguments
-    parser.add_argument("--data_class", type=str, default="MNIST")
-    parser.add_argument("--model_class", type=str, default="MLP")
     parser.add_argument("--wandb", action="store_true", default=None)
     parser.add_argument("--load_checkpoint", type=str, default=None)
 
     # Get the data and model classes, so that we can add their specific arguments
     temp_args, _ = parser.parse_known_args()
-    data_class = _import_class(f"src.data.{temp_args.data_class}")
-    model_class = _import_class(f"src.models.{temp_args.model_class}")
 
     # Get data, model, and LitModel specific arguments
     data_group = parser.add_argument_group("Data Args")
-    data_class.add_to_argparse(data_group)
+    TorchvisionDataset.add_to_argparse(data_group)
 
-    model_group = parser.add_argument_group("Model Args")
-    model_class.add_to_argparse(model_group)
+    # model_group = parser.add_argument_group("Model Args")
+    # model_class.add_to_argparse(model_group)
+
+
+    parser.add_argument("--model_name", type=str, default="vgg16")
+    parser.add_argument("--pretrained", action='store_true')
+    parser.add_argument("--n_classes", type=int, default=10)
+    parser.add_argument("--freeze", action='store_true')
+
 
     lit_model_group = parser.add_argument_group("LitModel Args")
-    lit_models.BaseLitModel.add_to_argparse(lit_model_group)
+    LitModel.add_to_argparse(lit_model_group)
 
     parser.add_argument("--help", "-h", action="help")
     return parser
@@ -69,17 +76,13 @@ def main():
     """
     parser = _setup_parser()
     args = parser.parse_args()
-    data_class = _import_class(f"src.data.{args.data_class}")
-    model_class = _import_class(f"src.models.{args.model_class}")
-    data = data_class(args)
-    model = model_class(data_config=data.config(), args=args)
-    
-    lit_model_class = lit_models.BaseLitModel
+    data = TorchvisionDataset(args)
+    model = get_model(**filter_args_for_fn(vars(args), get_model))
 
     if args.load_checkpoint is not None:
-        lit_model = lit_model_class.load_from_checkpoint(args.load_checkpoint, args=args, model=model)
+        lit_model = LitModel.load_from_checkpoint(args.load_checkpoint, args=vars(args), model=model)
     else:
-        lit_model = lit_model_class(args=args, model=model)
+        lit_model = LitModel(args=vars(args), model=model)
 
     logger = pl.loggers.TensorBoardLogger("training/logs")
     if args.wandb:
@@ -87,7 +90,7 @@ def main():
         logger.watch(model)
         logger.log_hyperparams(vars(args))
 
-    callbacks = [pl.callbacks.EarlyStopping(monitor="val_loss", mode="min", patience=10)]
+    callbacks = [pl.callbacks.EarlyStopping(monitor="val_loss", mode="min", patience=30)] # what if cyclical?
 
     args.weights_summary = "full"  # Print full summary of the model
     trainer = pl.Trainer.from_argparse_args(args, callbacks=callbacks, logger=logger, default_root_dir="training/logs")

@@ -5,7 +5,7 @@ import argparse
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
-from image_recognizer import util
+from src import util
 
 def load_and_print_info(data_module_class: type) -> None:
     """Load EMNISTLines and print info."""

@@ -5,7 +5,7 @@ from torch.utils.data import random_split
 from torchvision.datasets import CIFAR10 as TorchCIFAR10
 from torchvision import transforms
 
-from image_recognizer.data.base_data_module import BaseDataModule, load_and_print_info
+from src.data.base_data_module import BaseDataModule, load_and_print_info
 
 DOWNLOADED_DATA_DIRNAME = BaseDataModule.data_dirname() / "download"
 
