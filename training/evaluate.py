@@ -76,6 +76,7 @@ def _setup_parser():
     return parser
 
 def evaluate_model(lit_model, dataloader):
+    lit_model.eval()
     predictions = []
     for idx, batch in tqdm(enumerate(dataloader)):
         pred = lit_model.test_step(batch, idx)
