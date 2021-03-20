@@ -86,7 +86,7 @@ def evaluate_model(lit_model, dataloader):
 
 def get_targets(dataset):
     if isinstance(dataset, torch.utils.data.Subset):
-        return np.array(dataset.dataset.targets)
+        return np.array(dataset.dataset.targets)[dataset.indices]
     else:
         return np.array(dataset.targets)
 
@@ -123,7 +123,8 @@ def main():
 
     elif args.mode == 'swa':
         lit_model = LitModel(args=vars(args), model=model)
-        apply_swa(lit_model, args.run, K=args.swa_k)
+        apply_swa(lit_model, args.run, K=args.k)
+        print('updating batch norm')
         update_batch_normalization(lit_model, data.train_dataloader()) #
         model_iterator = DummyIterator(lit_model)
 
@@ -148,7 +149,7 @@ def main():
         preds_single = evaluate_model(model, dataloader)
         predictions.append(preds_single)
         print(i, accuracy_score(targets, preds_single.argmax(axis=1)))
-    predictions = np.concatenate(predictions, axis=0)
+    predictions = np.stack(predictions)
 
     # save targets and predictions
     pred_path = os.path.join(wandb.run.dir, 'predictions.npy')

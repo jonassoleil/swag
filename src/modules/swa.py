@@ -4,6 +4,7 @@ from src.utils.load_utils import get_state_from_checkpoint, get_k_last_checkpoin
 def load_swa_weights(run_id, checkpoints):
     n = len(checkpoints)
     # load first epoch
+    print('Loading weights from: ', checkpoints[0])
     weights = get_state_from_checkpoint(run_id, checkpoints[0])
 
     # shrink
@@ -12,6 +13,7 @@ def load_swa_weights(run_id, checkpoints):
 
     # compute average
     for checkpoint in checkpoints[1:]:
+        print('Loading weights from: ', checkpoint)
         x = get_state_from_checkpoint(run_id, checkpoint)
         for k, w in x.items():
             weights[k] += w / n

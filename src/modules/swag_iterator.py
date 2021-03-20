@@ -24,5 +24,6 @@ class SWAGIterator(BaseModelIterator):
     def get_next_model(self):
         weights = self.sample_weights()
         self.model.load_state_dict(weights)
+        print('updating batch norm')
         update_batch_normalization(self.model, self.train_loader)
         return self.model
