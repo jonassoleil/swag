@@ -9,13 +9,16 @@ import pytorch_lightning as pl
 import wandb
 from tqdm import tqdm
 
-from src import lit_models
 from src.data.torchvision_dataset import TorchvisionDataset
 from src.lit_models.lit_model import LitModel
 from src.models.get_model import get_model
-from src.util import filter_args_for_fn
+from src.modules.dummy_iterator import DummyIterator
+from src.modules.ensemble_iterator import EnsembleIterator
+from src.modules.swa import apply_swa
+from src.modules.swag_iterator import SWAGIterator
 from src.utils.load_utils import list_all_checkpoints, download_checkpoint
-from src.utils.wandb_model_checkpoint import WandBModelCheckpoint
+from sklearn.metrics import accuracy_score
+from src.utils.update_bn import update_batch_normalization
 
 wandb.init(project='swa', entity='adv-ml')
 
@@ -43,9 +46,14 @@ def _setup_parser():
 
     # Basic arguments
     parser.add_argument("--wandb", action="store_true", default=None)
-    # parser.add_argument("--load_checkpoint", type=str, default=None)
-    parser.add_argument("--run", type=str, default=None)
-    parser.add_argument("--mode", type=str, default="normal") # add swa, swag, ensemble
+
+    # evaluation arguments
+    parser.add_argument("--run", type=str, default=None, required=True, help='Run id from which to load the checkpoints')
+    parser.add_argument("--checkpoint", type=str, default='last_checkpoints/last.ckpt',
+                        help='Specific checkpoint to load (only for normal mode)')
+    parser.add_argument("--mode", type=str, default="normal", help='Evaluation mode: normal|swa|swag|ensemble|(interpolate?)') #
+    parser.add_argument("--k", type=int, default=None, help="Number of last checkpoints to use (if None all will be used)") # for swa, swag, ensemble
+    parser.add_argument("--n_samples", type=int, default=16, help="Number of samples for SWAG and interpolate modes") # for SWAG
 
     # Get the data and model classes, so that we can add their specific arguments
     temp_args, _ = parser.parse_known_args()
@@ -67,6 +75,15 @@ def _setup_parser():
     parser.add_argument("--help", "-h", action="help")
     return parser
 
+def evaluate_model(lit_model, dataloader):
+    predictions = []
+    for idx, batch in tqdm(enumerate(dataloader)):
+        pred = lit_model.test_step(batch, idx)
+        pred = pred.cpu().detach().numpy()
+        predictions.append(pred)
+    predictions = np.concatenate(predictions, axis=0)
+    return predictions
+
 
 def main():
     """
@@ -80,41 +97,64 @@ def main():
     parser = _setup_parser()
     args = parser.parse_args()
     data = TorchvisionDataset(args)
-    model = get_model(model_name=args.model_name, n_classes=args.n_classes, freeze=False, pretrained=True)
 
-    checkpoints = list_all_checkpoints(args.run)
-    print(checkpoints)
-    download_checkpoint(args.run, 'last_checkpoints/last.ckpt') # TODO: get best instead?
-    lit_model = LitModel.load_from_checkpoint('last_checkpoints/last.ckpt', args=vars(args), model=model)
-
-    logger = pl.loggers.TensorBoardLogger("training/logs")
-    if args.wandb:
-        logger = pl.loggers.WandbLogger()
-        logger.watch(model)
-        logger.log_hyperparams(vars(args))
-
+    # prepare data
     data.prepare_data()
     data.setup()
     if args.use_test:
+        targets = np.array(data.data_test.targets)
         dataloader = data.test_dataloader()
     else:
+        targets = np.array(data.data_val.targets)
         dataloader = data.val_dataloader()
 
-    predictions = []
-    for idx, batch in tqdm(enumerate(dataloader)):
-        pred = lit_model.test_step(batch, idx)
-        pred = pred.cpu().detach().numpy()
-        predictions.append(pred)
+    # Prepare model
+    model = get_model(model_name=args.model_name, n_classes=args.n_classes, freeze=False, pretrained=True)
 
+    if args.mode == 'normal':
+        download_checkpoint(args.run, args.checkpoint)
+        lit_model = LitModel.load_from_checkpoint(args.checkpoint, args=vars(args), model=model)
+        model_iterator = DummyIterator(lit_model)
+
+    elif args.mode == 'swa':
+        lit_model = LitModel(args=vars(args), model=model)
+        apply_swa(lit_model, args.run, K=args.swa_k)
+        update_batch_normalization(lit_model, data.train_dataloader()) #
+        model_iterator = DummyIterator(lit_model)
+
+    elif args.mode == 'ensemble':
+        lit_model = LitModel(args=vars(args), model=model)
+        model_iterator = EnsembleIterator(lit_model, args.run, K=args.k)
+
+    elif args.mode == 'swag':
+        lit_model = LitModel(args=vars(args), model=model)
+        model_iterator = SWAGIterator(lit_model, args.run,  data.train_dataloader(), K=args.k, n_samples=args.n_samples)
+
+    # TODO: some better logging
+    # logger = pl.loggers.TensorBoardLogger("training/logs")
+    # if args.wandb:
+    #     logger = pl.loggers.WandbLogger()
+    #     logger.watch(model)
+    #     logger.log_hyperparams(vars(args))
+
+    # Make predictions
+    predictions = []
+    for i, model in enumerate(model_iterator): # iterate over all model versions (for ensemble/swag)
+        preds_single = evaluate_model(model, dataloader)
+        predictions.append(preds_single)
+        print(i, accuracy_score(targets, preds_single.argmax(axis=1)))
     predictions = np.concatenate(predictions, axis=0)
+
+    # save targets and predictions
     pred_path = os.path.join(wandb.run.dir, 'predictions.npy')
     np.save(pred_path, predictions)
     wandb.save(pred_path)
+    targets_path = os.path.join(wandb.run.dir, 'targets.npy')
+    np.save(targets_path, targets)
+    wandb.save(targets_path)
 
+    print(accuracy_score(targets, predictions.mean(axis=0).argmax(axis=1)))
 
-
-    # args.weights_summary = "full"  # Print full summary of the model
-    # trainer.test(lit_model, datamodule=data)
 
 
 if __name__ == "__main__":

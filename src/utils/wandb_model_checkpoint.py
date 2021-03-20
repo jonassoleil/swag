@@ -10,7 +10,4 @@ class WandBModelCheckpoint(pl.callbacks.ModelCheckpoint):
         #     super()._save_model(trainer, filepath)
         # else:
         super()._save_model(filepath, trainer, pl_module)
-        # TODO: make sure it works
-        # print('saving for epoch: ', trainer.current_epoch)
-        # print('saving: ', filepath)
         wandb.save(filepath, base_path=wandb.run.dir)

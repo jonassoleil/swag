@@ -28,6 +28,8 @@ def reset_bns(bns):
 
 def update_batch_normalization(model, loader):
     bns = get_bns(model)
+    if len(bns) == 0:
+        return  # no bn layers detected
     model.train()
     reset_bns(bns)
     n = 0

@@ -1,3 +1,5 @@
+import os
+import torch
 import wandb
 import re
 
@@ -27,3 +29,28 @@ def download_checkpoint(run_id, checkpoint):
         if file.name == checkpoint:
             file.download(replace=True) # TODO: maybe specify dir
             return
+
+def get_state_from_checkpoint(run_id, checkpoint):
+  if not os.path.isfile(checkpoint):
+    download_checkpoint(run_id, checkpoint)
+  chpt = torch.load(checkpoint, map_location=torch.device('cpu'))
+  return chpt['state_dict']
+
+
+def get_cyclical_checkpoints_sorted(checkpoints):
+    return list(
+        sorted(
+            (ckpt for ckpt in checkpoints if 'cyclical_checkpoints' in ckpt),
+            key=lambda ckpt: int(re.search(r'epoch=(\d+)', ckpt).group(1)))
+        )
+
+def get_k_last_checkpoints(run_id, K=None):
+    available_checkpoints = list_all_checkpoints(run_id)
+    available_checkpoints = get_cyclical_checkpoints_sorted(available_checkpoints)
+
+    if K is None:
+        return available_checkpoints
+    else:
+        if K > len(available_checkpoints):
+            raise ValueError(f'K={K} is larger than the number of available checkpoints: {available_checkpoints}')
+        return available_checkpoints[-K:]

@@ -102,7 +102,7 @@ def main():
 
 
     callbacks = [pl.callbacks.EarlyStopping(monitor="val_loss", mode="min", patience=30),
-                 pl.callbacks.lr_monitor.LearningRateMonitor(log_momentum=True)] # what if cyclical?
+                 pl.callbacks.lr_monitor.LearningRateMonitor()] # what if cyclical?
 
     if args.save_every is not None:
         cyclical_path = os.path.join(wandb.run.dir, 'cyclical_checkpoints')

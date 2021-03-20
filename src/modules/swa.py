@@ -1,35 +1,26 @@
-import torch
-import os
+from src.utils.load_utils import get_state_from_checkpoint, get_k_last_checkpoints
 
-# TODO: make it work
-# def load_swa_weights(path, epochs):
-#     n = len(epochs)
-#     # load first epoch
-#     weights = torch.load(os.path.join(path, f'model_{epochs[0]}.pth'))
-#
-#     # shrink
-#     for k, w in weights.items():
-#         weights[k] = w / n
-#
-#     # compute average
-#     for i in epochs[1:]:
-#         x = torch.load(os.path.join(path, f'model_{i}.pth'))
-#         for k, w in x.items():
-#             weights[k] += w / n
-#
-#     return weights
-#
-#
-# def apply_swa(model, path, K=None):
-#     available_epochs = list(sorted(get_available_epochs(path)))
-#     # None for all epochs
-#     if K is None:
-#         epochs = available_epochs
-#     else:
-#         if K > len(available_epochs):
-#             raise ValueError(f'K={K} is larger than the number of available epochs: {available_epochs}')
-#         epochs = available_epochs[-K:]
-#     weights = load_swa_weights(path, epochs)
-#     model.load_state_dict(weights)
-#     # to_gpu(model)
+
+def load_swa_weights(run_id, checkpoints):
+    n = len(checkpoints)
+    # load first epoch
+    weights = get_state_from_checkpoint(run_id, checkpoints[0])
+
+    # shrink
+    for k, w in weights.items():
+        weights[k] = w / n
+
+    # compute average
+    for checkpoint in checkpoints[1:]:
+        x = get_state_from_checkpoint(run_id, checkpoint)
+        for k, w in x.items():
+            weights[k] += w / n
+    return weights
+
+
+def apply_swa(model, run_id, K=None):
+    checkpoints = get_k_last_checkpoints(run_id, K)
+    weights = load_swa_weights(run_id, checkpoints)
+    model.load_state_dict(weights)
+    # to_gpu(model)
 
