@@ -84,6 +84,11 @@ def evaluate_model(lit_model, dataloader):
     predictions = np.concatenate(predictions, axis=0)
     return predictions
 
+def get_targets(dataset):
+    if isinstance(dataset, torch.utils.data.Subset):
+        return np.array(dataset.dataset.targets)
+    else:
+        return np.array(dataset.targets)
 
 def main():
     """
@@ -102,10 +107,10 @@ def main():
     data.prepare_data()
     data.setup()
     if args.use_test:
-        targets = np.array(data.data_test.targets)
+        targets = get_targets(data.data_test)
         dataloader = data.test_dataloader()
     else:
-        targets = np.array(data.data_val.targets)
+        targets = get_targets(data.data_val)
         dataloader = data.val_dataloader()
 
     # Prepare model
@@ -154,6 +159,7 @@ def main():
     wandb.save(targets_path)
 
     print(accuracy_score(targets, predictions.mean(axis=0).argmax(axis=1)))
+    # TODO: remove stuff? maybe use run id while downloading checkpoints?
 
 
 
