@@ -61,6 +61,7 @@ def _setup_parser():
 
     parser.add_argument("--save_every", type=int, default=None)
     parser.add_argument("--backup_every", type=int, default=10)
+    parser.add_argument("--stopping_patience", type=int, default=None, help="Patience for early stopping")
 
     lit_model_group = parser.add_argument_group("LitModel Args")
     LitModel.add_to_argparse(lit_model_group)
@@ -101,8 +102,10 @@ def main():
         logger.log_hyperparams(vars(args))
 
 
-    callbacks = [pl.callbacks.EarlyStopping(monitor="val_loss", mode="min", patience=30),
-                 pl.callbacks.lr_monitor.LearningRateMonitor()] # what if cyclical?
+    callbacks = [pl.callbacks.lr_monitor.LearningRateMonitor()]
+    if args.stopping_patience is not None:
+        callbacks.append(pl.callbacks.EarlyStopping(monitor="val_loss", mode="min", patience=args.stopping_patience))
+
 
     if args.save_every is not None:
         cyclical_path = os.path.join(wandb.run.dir, 'cyclical_checkpoints')
@@ -112,7 +115,7 @@ def main():
                                               period=args.save_every,
                                               save_top_k=-1,
                                               save_weights_only=True))
-    if args.backup_every is not None: # maybe change to best
+    if args.backup_every is not None: # This actually saves last only if better than previous
         last_path = os.path.join(wandb.run.dir, 'last_checkpoints')
         callbacks.append(WandBModelCheckpoint(dirpath=last_path,  # everything
                                               filename='last',

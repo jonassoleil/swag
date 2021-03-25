@@ -1,6 +1,5 @@
 
 class BaseModelIterator:
-    # TODO: maybe this should be an actual iterator
     def __init__(self):
         self.length = 0
         self.reset()

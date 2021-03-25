@@ -115,7 +115,7 @@ def main():
         dataloader = data.val_dataloader()
 
     # Prepare model
-    model = get_model(model_name=args.model_name, n_classes=args.n_classes, freeze=False, pretrained=True)
+    model = get_model(model_name=args.model_name, n_classes=args.n_classes, freeze=False, pretrained=False)
 
     if args.mode == 'normal':
         download_checkpoint(args.run, args.checkpoint)
