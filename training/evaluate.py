@@ -16,7 +16,7 @@ from src.modules.dummy_iterator import DummyIterator
 from src.modules.ensemble_iterator import EnsembleIterator
 from src.modules.swa import apply_swa
 from src.modules.swag_iterator import SWAGIterator
-from src.utils.load_utils import list_all_checkpoints, download_checkpoint
+from src.utils.load_utils import list_all_checkpoints, download_checkpoint, get_k_last_checkpoints
 from sklearn.metrics import accuracy_score
 from src.utils.update_bn import update_batch_normalization
 
@@ -51,8 +51,9 @@ def _setup_parser():
     parser.add_argument("--run", type=str, default=None, required=True, help='Run id from which to load the checkpoints')
     parser.add_argument("--checkpoint", type=str, default='last_checkpoints/last.ckpt',
                         help='Specific checkpoint to load (only for normal mode)')
-    parser.add_argument("--mode", type=str, default="normal", help='Evaluation mode: normal|swa|swag|ensemble|(interpolate?)') #
+    parser.add_argument("--mode", type=str, default="normal", help='Evaluation mode: normal|swa|swa_multiple|swag|swag_multiple|ensemble|(interpolate?)') #
     parser.add_argument("--k", type=int, default=None, help="Number of last checkpoints to use (if None all will be used)") # for swa, swag, ensemble
+    parser.add_argument("--k_min", type=int, default=2, help="For swag_multiple") # for swa, swag, ensemble
     parser.add_argument("--n_samples", type=int, default=16, help="Number of samples for SWAG and interpolate modes") # for SWAG
 
     # Get the data and model classes, so that we can add their specific arguments
@@ -90,6 +91,24 @@ def get_targets(dataset):
         return np.array(dataset.dataset.targets)[dataset.indices]
     else:
         return np.array(dataset.targets)
+
+def run_evaluation(model_iterator, dataloader, targets, suffix=""):
+    predictions = []
+    for i, model in enumerate(model_iterator):  # iterate over all model versions (for ensemble/swag)
+        preds_single = evaluate_model(model, dataloader)
+        predictions.append(preds_single)
+        print(i, accuracy_score(targets, preds_single.argmax(axis=1)))
+    predictions = np.stack(predictions)
+
+    # save targets and predictions
+    pred_path = os.path.join(wandb.run.dir, f'predictions{suffix}.npy')
+    np.save(pred_path, predictions)
+    wandb.save(pred_path)
+    targets_path = os.path.join(wandb.run.dir, f'targets{suffix}.npy')
+    np.save(targets_path, targets)
+    wandb.save(targets_path)
+
+    print(accuracy_score(targets, predictions.mean(axis=0).argmax(axis=1)))
 
 def main():
     """
@@ -137,31 +156,52 @@ def main():
         lit_model = LitModel(args=vars(args), model=model)
         model_iterator = SWAGIterator(lit_model, args.run,  data.train_dataloader(), K=args.k, n_samples=args.n_samples)
 
-    # TODO: some better logging
-    # logger = pl.loggers.TensorBoardLogger("training/logs")
-    # if args.wandb:
-    #     logger = pl.loggers.WandbLogger()
-    #     logger.watch(model)
-    #     logger.log_hyperparams(vars(args))
 
-    # Make predictions
-    predictions = []
-    for i, model in enumerate(model_iterator): # iterate over all model versions (for ensemble/swag)
-        preds_single = evaluate_model(model, dataloader)
-        predictions.append(preds_single)
-        print(i, accuracy_score(targets, preds_single.argmax(axis=1)))
-    predictions = np.stack(predictions)
 
-    # save targets and predictions
-    pred_path = os.path.join(wandb.run.dir, 'predictions.npy')
-    np.save(pred_path, predictions)
-    wandb.save(pred_path)
-    targets_path = os.path.join(wandb.run.dir, 'targets.npy')
-    np.save(targets_path, targets)
-    wandb.save(targets_path)
+    elif args.mode == 'swag_multiple':
+        lit_model = LitModel(args=vars(args), model=model)
+        if args.k is None:
+            max_k = len(get_k_last_checkpoints(args.run))
+        else:
+            max_k = args.k
 
-    print(accuracy_score(targets, predictions.mean(axis=0).argmax(axis=1)))
-    # TODO: remove stuff? maybe use run id while downloading checkpoints?
+        for k in range(args.k_min, max_k + 1):
+            print(f"running for K={k}")
+            model_iterator = SWAGIterator(lit_model, args.run,
+                                          data.train_dataloader(),
+                                          K=k,
+                                          n_samples=args.n_samples)
+            run_evaluation(model_iterator, dataloader, targets, suffix=f'_k{k}')
+        return
+
+    elif args.mode == 'swa_multiple':
+        lit_model = LitModel(args=vars(args), model=model)
+        if args.k is None:
+            max_k = len(get_k_last_checkpoints(args.run))
+        else:
+            max_k = args.k
+
+        for k in range(args.k_min, max_k + 1):
+            print(f"running for K={k}")
+            apply_swa(lit_model, args.run, K=k)
+            print('updating batch norm')
+            update_batch_normalization(lit_model, data.train_dataloader())  #
+            model_iterator = DummyIterator(lit_model)
+            run_evaluation(model_iterator, dataloader, targets, suffix=f'_k{k}')
+        return
+
+
+
+
+
+    elif args.mode == 'interpolate':
+        raise NotImplementedError
+
+    else:
+        raise ValueError(f'Mode {args.mode} is not available')
+
+
+    run_evaluation(model_iterator, dataloader, targets)
 
 
 

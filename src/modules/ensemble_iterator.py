@@ -16,6 +16,7 @@ class EnsembleIterator(BaseModelIterator):
 
     def get_next_model(self):
         checkpoint = self.checkpoints[self.i]
+        print('Loading: ', checkpoint)
         weights = get_state_from_checkpoint(self.run_id, checkpoint)
         self.model.load_state_dict(weights)
         return self.model
