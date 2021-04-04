@@ -80,5 +80,7 @@ class TorchvisionDataset(BaseDataModule):
 
     def prepare_data(self):
         self.data_class(self.data_dir, download=True)
+        if self.dataset_name == 'SVHN':
+            self.data_class(self.data_dir, split='test', download=True)
 
     
