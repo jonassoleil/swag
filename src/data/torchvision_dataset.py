@@ -1,6 +1,7 @@
 import argparse
 
 import pytorch_lightning as pl
+import torch
 from torch.utils.data import random_split
 from torch.utils.data import DataLoader, Subset
 from torchvision import datasets
@@ -12,6 +13,17 @@ from src.util import filter_args_for_fn, get_default_args, fn_defaults_to_argpar
 
 DOWNLOADED_DATA_DIRNAME = BaseDataModule.data_dirname() / "downloaded"
 
+def get_targets(dataset):
+    if isinstance(dataset, torch.utils.data.Subset):
+        if hasattr(dataset.dataset, 'targets'):
+            return np.array(dataset.dataset.targets)[dataset.indices]
+        else:
+            return np.array(dataset.dataset.labels)[dataset.indices]
+    else:
+        if hasattr(dataset, 'targets'):
+            return np.array(dataset.targets)
+        else:
+            return np.array(dataset.labels)
 
 class TorchvisionDataset(BaseDataModule):
     """
@@ -35,7 +47,7 @@ class TorchvisionDataset(BaseDataModule):
 
     def split_train_val(self):
         # split train/val
-        targets = np.array(self.data_train.targets)
+        targets = get_targets(self.data_train)
         train_idx, val_idx = train_test_split(
             np.arange(len(targets)),
             test_size=0.1,

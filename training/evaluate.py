@@ -10,7 +10,7 @@ import pytorch_lightning as pl
 import wandb
 from tqdm import tqdm
 
-from src.data.torchvision_dataset import TorchvisionDataset
+from src.data.torchvision_dataset import TorchvisionDataset, get_targets
 from src.lit_models.lit_model import LitModel
 from src.models.get_model import get_model
 from src.modules.dummy_iterator import DummyIterator
@@ -88,12 +88,6 @@ def evaluate_model(lit_model, dataloader):
     predictions = np.concatenate(predictions, axis=0)
     return predictions
 
-def get_targets(dataset):
-    if isinstance(dataset, torch.utils.data.Subset):
-        return np.array(dataset.dataset.targets)[dataset.indices]
-    else:
-        return np.array(dataset.targets)
-
 def run_evaluation(model_iterator, dataloader, targets, suffix=""):
     predictions = []
     for i, model in enumerate(model_iterator):  # iterate over all model versions (for ensemble/swag)
@@ -123,6 +117,7 @@ def main():
     """
     for checkpoint_path in ['last_checkpoints', 'cyclical_checkpoints']:
         if os.path.exists(checkpoint_path):
+            print(f'removing: {checkpoint_path}')
             shutil.rmtree(checkpoint_path)
 
     parser = _setup_parser()
