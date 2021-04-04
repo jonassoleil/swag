@@ -2,6 +2,7 @@
 import argparse
 import importlib
 import os
+import shutil
 
 import numpy as np
 import torch
@@ -52,6 +53,7 @@ def _setup_parser():
     parser.add_argument("--checkpoint", type=str, default='last_checkpoints/last.ckpt',
                         help='Specific checkpoint to load (only for normal mode)')
     parser.add_argument("--mode", type=str, default="normal", help='Evaluation mode: normal|swa|swa_multiple|swag|swag_multiple|ensemble|(interpolate?)') #
+    parser.add_argument("--evaluation_dataset_name", type=str, default=None, help='If a different evaluation dataset should be used.') #
     parser.add_argument("--k", type=int, default=None, help="Number of last checkpoints to use (if None all will be used)") # for swa, swag, ensemble
     parser.add_argument("--k_min", type=int, default=2, help="For swag_multiple") # for swa, swag, ensemble
     parser.add_argument("--n_samples", type=int, default=16, help="Number of samples for SWAG and interpolate modes") # for SWAG
@@ -104,7 +106,7 @@ def run_evaluation(model_iterator, dataloader, targets, suffix=""):
     pred_path = os.path.join(wandb.run.dir, f'predictions{suffix}.npy')
     np.save(pred_path, predictions)
     wandb.save(pred_path)
-    targets_path = os.path.join(wandb.run.dir, f'targets{suffix}.npy')
+    targets_path = os.path.join(wandb.run.dir, f'targets.npy')
     np.save(targets_path, targets)
     wandb.save(targets_path)
 
@@ -119,19 +121,33 @@ def main():
     python training/run_experiment.py --max_epochs=3 --gpus='0,' --num_workers=20 --model_class=MLP --data_class=MNIST
     ```
     """
+    for checkpoint_path in ['last_checkpoints/', 'cyclical_checkpoints']:
+        if os.path.exists(checkpoint_path):
+            shutil.rmtree(checkpoint_path)
+
     parser = _setup_parser()
     args = parser.parse_args()
     data = TorchvisionDataset(args)
+    if args.evaluation_dataset_name is not None:
+        eval_args = vars(args)
+        eval_args['dataset_name'] = args.evaluation_dataset_name
+        evaluation_data = TorchvisionDataset(argparse.Namespace(**eval_args))
+        if args.mode in ["swa", "swa_multiple", "swag", "swag_multiple", "interpolate"]:
+            data.prepare_data()
+            data.setup()
+    else:
+        evaluation_data = data
 
     # prepare data
-    data.prepare_data()
-    data.setup()
+    evaluation_data.prepare_data()
+    evaluation_data.setup()
+
     if args.use_test:
-        targets = get_targets(data.data_test)
-        dataloader = data.test_dataloader()
+        targets = get_targets(evaluation_data.data_test)
+        dataloader = evaluation_data.test_dataloader()
     else:
-        targets = get_targets(data.data_val)
-        dataloader = data.val_dataloader()
+        targets = get_targets(evaluation_data.data_val)
+        dataloader = evaluation_data.val_dataloader()
 
     # Prepare model
     model = get_model(model_name=args.model_name, n_classes=args.n_classes, freeze=False, pretrained=False)
@@ -155,8 +171,6 @@ def main():
     elif args.mode == 'swag':
         lit_model = LitModel(args=vars(args), model=model)
         model_iterator = SWAGIterator(lit_model, args.run,  data.train_dataloader(), K=args.k, n_samples=args.n_samples)
-
-
 
     elif args.mode == 'swag_multiple':
         lit_model = LitModel(args=vars(args), model=model)
@@ -190,19 +204,13 @@ def main():
             run_evaluation(model_iterator, dataloader, targets, suffix=f'_k{k}')
         return
 
-
-
-
-
     elif args.mode == 'interpolate':
         raise NotImplementedError
 
     else:
         raise ValueError(f'Mode {args.mode} is not available')
 
-
     run_evaluation(model_iterator, dataloader, targets)
-
 
 
 if __name__ == "__main__":
