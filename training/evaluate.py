@@ -121,7 +121,7 @@ def main():
     python training/run_experiment.py --max_epochs=3 --gpus='0,' --num_workers=20 --model_class=MLP --data_class=MNIST
     ```
     """
-    for checkpoint_path in ['last_checkpoints/', 'cyclical_checkpoints']:
+    for checkpoint_path in ['last_checkpoints', 'cyclical_checkpoints']:
         if os.path.exists(checkpoint_path):
             shutil.rmtree(checkpoint_path)
 
