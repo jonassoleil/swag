@@ -10,6 +10,7 @@ import pytorch_lightning as pl
 import wandb
 from tqdm import tqdm
 
+from src.data.noise_dataset import NoiseDatasetPL
 from src.data.torchvision_dataset import TorchvisionDataset, get_targets
 from src.lit_models.lit_model import LitModel
 from src.models.get_model import get_model
@@ -124,9 +125,12 @@ def main():
     args = parser.parse_args()
     data = TorchvisionDataset(args)
     if args.evaluation_dataset_name is not None:
-        eval_args = vars(args)
-        eval_args['dataset_name'] = args.evaluation_dataset_name
-        evaluation_data = TorchvisionDataset(argparse.Namespace(**eval_args))
+        if args.evaluation_dataset_name == 'noise':
+            evaluation_data = NoiseDatasetPL(args)
+        else:
+            eval_args = vars(args)
+            eval_args['dataset_name'] = args.evaluation_dataset_name
+            evaluation_data = TorchvisionDataset(argparse.Namespace(**eval_args))
         if args.mode in ["swa", "swa_multiple", "swag", "swag_multiple", "interpolate"]:
             data.prepare_data()
             data.setup()
