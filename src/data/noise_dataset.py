@@ -3,7 +3,7 @@ import torch
 from src.data import BaseDataModule
 
 class NoiseDataset(torch.utils.data.Dataset):
-    def __init__(self, shape, len=2000, seed=0):
+    def __init__(self, shape, len=10000, seed=0):
         self.shape = list(shape)
         self.len = len
         self.targets = torch.zeros(len)
