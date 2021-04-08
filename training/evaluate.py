@@ -20,7 +20,7 @@ from src.modules.swa import apply_swa
 from src.modules.swag_iterator import SWAGIterator
 from src.utils.load_utils import list_all_checkpoints, download_checkpoint, get_k_last_checkpoints
 from sklearn.metrics import accuracy_score
-from src.utils.update_bn import update_batch_normalization
+from src.utils.update_bn import update_batch_normalization, to_gpu
 
 wandb.init(project='swa', entity='adv-ml')
 
@@ -83,6 +83,7 @@ def evaluate_model(lit_model, dataloader):
     lit_model.eval()
     predictions = []
     for idx, batch in tqdm(enumerate(dataloader)):
+        batch = [to_gpu(x) for x in batch]
         pred = lit_model.test_step(batch, idx)
         pred = pred.cpu().detach().numpy()
         predictions.append(pred)
@@ -154,25 +155,35 @@ def main():
     if args.mode == 'normal':
         download_checkpoint(args.run, args.checkpoint)
         lit_model = LitModel.load_from_checkpoint(args.checkpoint, args=vars(args), model=model)
+        to_gpu(lit_model)
+        to_gpu(lit_model.model)
         model_iterator = DummyIterator(lit_model)
 
     elif args.mode == 'swa':
         lit_model = LitModel(args=vars(args), model=model)
         apply_swa(lit_model, args.run, K=args.k)
+        to_gpu(lit_model)
+        to_gpu(lit_model.model)
         print('updating batch norm')
         update_batch_normalization(lit_model, data.train_dataloader()) #
         model_iterator = DummyIterator(lit_model)
 
     elif args.mode == 'ensemble':
         lit_model = LitModel(args=vars(args), model=model)
+        to_gpu(lit_model)
+        to_gpu(lit_model.model)
         model_iterator = EnsembleIterator(lit_model, args.run, K=args.k)
 
     elif args.mode == 'swag':
         lit_model = LitModel(args=vars(args), model=model)
+        to_gpu(lit_model)
+        to_gpu(lit_model.model)
         model_iterator = SWAGIterator(lit_model, args.run,  data.train_dataloader(), K=args.k, n_samples=args.n_samples)
 
     elif args.mode == 'swag_multiple':
         lit_model = LitModel(args=vars(args), model=model)
+        to_gpu(lit_model)
+        to_gpu(lit_model.model)
         if args.k is None:
             max_k = len(get_k_last_checkpoints(args.run))
         else:
@@ -189,6 +200,8 @@ def main():
 
     elif args.mode == 'swa_multiple':
         lit_model = LitModel(args=vars(args), model=model)
+        to_gpu(lit_model)
+        to_gpu(lit_model.model)
         if args.k is None:
             max_k = len(get_k_last_checkpoints(args.run))
         else:
