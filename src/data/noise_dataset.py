@@ -21,9 +21,9 @@ class NoiseDatasetPL(BaseDataModule):
     def __init__(self, args):
         super().__init__(args)
         if  args.dataset_name == 'MNIST':
-            self.shape = (28, 28, 1)
+            self.shape = (1, 28, 28)
         else:
-            self.shape = (32, 32, 3)
+            self.shape = (3, 32, 32)
 
     def setup(self, stage=None):
         self.data_train = NoiseDataset(self.shape)
