@@ -125,6 +125,10 @@ def main():
 
     parser = _setup_parser()
     args = parser.parse_args()
+    if args.wandb:
+        logger = pl.loggers.WandbLogger()
+        logger.log_hyperparams(vars(args))
+
     data = TorchvisionDataset(args)
     if args.evaluation_dataset_name is not None:
         if args.evaluation_dataset_name == 'noise':
