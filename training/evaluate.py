@@ -16,6 +16,7 @@ from src.lit_models.lit_model import LitModel
 from src.models.get_model import get_model
 from src.modules.dummy_iterator import DummyIterator
 from src.modules.ensemble_iterator import EnsembleIterator
+from src.modules.interpolated_iterator import InterpolatedIterator
 from src.modules.swa import apply_swa
 from src.modules.swag_iterator import SWAGIterator
 from src.utils.load_utils import list_all_checkpoints, download_checkpoint, get_k_last_checkpoints
@@ -217,7 +218,10 @@ def main():
         return
 
     elif args.mode == 'interpolate':
-        raise NotImplementedError
+        lit_model = LitModel(args=vars(args), model=model)
+        to_gpu(lit_model)
+        to_gpu(lit_model.model)
+        model_iterator = InterpolatedIterator(lit_model, args.run,  data.train_dataloader(), n_samples=args.n_samples)
 
     else:
         raise ValueError(f'Mode {args.mode} is not available')

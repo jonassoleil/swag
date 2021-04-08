@@ -52,6 +52,7 @@ class InterpolatedIterator(BaseModelIterator):
         self.relative_locations = np.arange(-1/(n_samples-2), 1 + 2/(n_samples-2), 1/(n_samples-2))
 
     def get_next_model(self):
+        print('loc:', self.relative_locations[self.i])
         wif, abs_dist = get_point_along_axis(self.w0f, self.w1f, loc=self.relative_locations[self.i])
         weights = flattened_to_state_dict(wif, self.model.state_dict())
         self.model.load_state_dict(weights)
