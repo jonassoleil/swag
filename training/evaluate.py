@@ -1,5 +1,6 @@
 """Experiment-running framework."""
 import argparse
+import gc
 import importlib
 import os
 import shutil
@@ -201,6 +202,8 @@ def main():
                                           K=k,
                                           n_samples=args.n_samples)
             run_evaluation(model_iterator, dataloader, targets, suffix=f'_k{k}')
+            del model_iterator
+            gc.collect()
         return
 
     elif args.mode == 'swa_multiple':
