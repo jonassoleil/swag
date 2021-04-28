@@ -20,6 +20,7 @@ from src.modules.ensemble_iterator import EnsembleIterator
 from src.modules.interpolated_iterator import InterpolatedIterator
 from src.modules.swa import apply_swa
 from src.modules.swag_iterator import SWAGIterator
+from src.modules.swag_iterator_low_resource import SWAGIteratorLowResource
 from src.utils.load_utils import list_all_checkpoints, download_checkpoint, get_k_last_checkpoints
 from sklearn.metrics import accuracy_score
 from src.utils.update_bn import update_batch_normalization, to_gpu
@@ -60,6 +61,7 @@ def _setup_parser():
     parser.add_argument("--k", type=int, default=None, help="Number of last checkpoints to use (if None all will be used)") # for swa, swag, ensemble
     parser.add_argument("--k_min", type=int, default=2, help="For swag_multiple") # for swa, swag, ensemble
     parser.add_argument("--n_samples", type=int, default=16, help="Number of samples for SWAG and interpolate modes") # for SWAG
+    parser.add_argument("--swag_efficiency_threshold", type=int, default=11, help="K value from which SWAG will work in efficient mode") # for SWAG
 
     # Get the data and model classes, so that we can add their specific arguments
     temp_args, _ = parser.parse_known_args()
@@ -184,7 +186,12 @@ def main():
         lit_model = LitModel(args=vars(args), model=model)
         to_gpu(lit_model)
         to_gpu(lit_model.model)
-        model_iterator = SWAGIterator(lit_model, args.run,  data.train_dataloader(), K=args.k, n_samples=args.n_samples)
+        if args.k >= args.swag_efficiency_threshold:
+            swag = SWAGIteratorLowResource
+        else:
+            swag = SWAGIterator
+
+        model_iterator = swag(lit_model, args.run,  data.train_dataloader(), K=args.k, n_samples=args.n_samples)
 
     elif args.mode == 'swag_multiple':
         lit_model = LitModel(args=vars(args), model=model)
@@ -197,7 +204,11 @@ def main():
 
         for k in range(args.k_min, max_k + 1):
             print(f"running for K={k}")
-            model_iterator = SWAGIterator(lit_model, args.run,
+            if args.k >= args.swag_efficiency_threshold:
+                swag = SWAGIteratorLowResource
+            else:
+                swag = SWAGIterator
+            model_iterator = swag(lit_model, args.run,
                                           data.train_dataloader(),
                                           K=k,
                                           n_samples=args.n_samples)
